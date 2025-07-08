@@ -48,6 +48,16 @@ def login():
         else:
             return "Wrong email or password"
     return render_template("login.html")
+@app.route("/admin")
+def admin():
+    try:
+        with open("users.txt", "r") as f:
+            lines = f.readlines()
+            users = [line.split(',')[0] for line in lines]  # show only email
+    except FileNotFoundError:
+        users = []
+
+    return render_template("admin.html", users=users)
 
 if __name__ == "__main__":
     app.run(debug=True)
