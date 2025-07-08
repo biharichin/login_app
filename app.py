@@ -61,9 +61,6 @@ def admin():
     conn.close()
 
     return render_template("admin.html", users=users)
-@app.route("/")
-def home():
-    return "Welcome! Go to /signup, /login, or /admin"
 
 # Run the app
 if __name__ == "__main__":
