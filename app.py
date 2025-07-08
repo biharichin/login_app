@@ -1,63 +1,68 @@
-
-from flask import Flask, render_template, request, redirect
+from flask import Flask, render_template, request
+import mysql.connector
 
 app = Flask(__name__)
-users = {}  # this is like a notebook storing users
-# This will load users from users.txt when app starts
-def load_users():
-    try:
-        with open("users.txt", "r") as file:
-            for line in file:
 
-                if line.strip() == "":
-                    continue
-                email, password = line.strip().split(",")
-                users[email] = password
-        print("Users loaded from file:", users)        
-    except FileNotFoundError:
-        # If file doesn't exist yet, skip it
-        pass
-load_users()
-@app.route('/')
-def home():
-    return '''
-    <h2>Welcome!</h2>
-    <a href="/signup"><button>Sign Up</button></a>
-    <a href="/login"><button>Log In</button></a>
-'''
-@app.route('/signup', methods=["GET", "POST"])
+# Connect to your MySQL database
+def get_db_connection():
+    return mysql.connector.connect(
+        host="sql12.freesqldatabase.com",
+        user="sql12788903",
+        password="28L4t89b5c",  # <-- PUT YOUR PASSWORD HERE
+        database="sql12788903"
+    )
+
+# Signup route
+@app.route("/signup", methods=["GET", "POST"])
 def signup():
     if request.method == "POST":
         email = request.form["email"]
         password = request.form["password"]
-        users[email] = password
-        with open("users.txt", "a") as file:
-            file.write(f"{email},{password}\n")
-        print("All users:", users)
 
-        return  f"user {email} Signup Successfu! Go to <a href='/login'>login"
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO users (email, password) VALUES (%s, %s)", (email, password))
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return f"User {email} signed up successfully! Go to /login"
     return render_template("signup.html")
 
-@app.route('/login', methods=["GET", "POST"])
+# Login route
+@app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
         email = request.form["email"]
         password = request.form["password"]
-        if users.get(email) == password:
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM users WHERE email = %s AND password = %s", (email, password))
+        user = cursor.fetchone()
+        cursor.close()
+        conn.close()
+
+        if user:
             return f"Welcome back, {email}!"
         else:
-            return "Wrong email or password"
+            return "Invalid email or password."
+
     return render_template("login.html")
+
+# Admin route to view all users
 @app.route("/admin")
 def admin():
-    try:
-        with open("users.txt", "r") as f:
-            lines = f.readlines()
-            users = [line.split(',')[0] for line in lines]  # show only email
-    except FileNotFoundError:
-        users = []
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT email FROM users")
+    users = [row[0] for row in cursor.fetchall()]
+    cursor.close()
+    conn.close()
 
     return render_template("admin.html", users=users)
 
+# Run the app
 if __name__ == "__main__":
     app.run(debug=True)
+    
